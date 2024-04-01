@@ -14,7 +14,7 @@ class TopicList(generics.ListCreateAPIView):
 
     def list(self, request):
         paginator = self.pagination_class()
-        result_page = paginator.paginate_queryset(self.queryset, request)
+        result_page = paginator.paginate_queryset(self.get_queryset(), request)
         serialized_topics = self.serializer_class(result_page, many=True)
         return paginator.get_paginated_response(serialized_topics.data)
 
@@ -29,7 +29,7 @@ class ChatListAll(generics.ListAPIView):
 
     def list(self, request):
         paginator = self.pagination_class()
-        result_page = paginator.paginate_queryset(self.queryset, request)
+        result_page = paginator.paginate_queryset(self.get_queryset(), request)
         serialized_chats = self.serializer_class(result_page, many=True)
         return paginator.get_paginated_response(serialized_chats.data)    
 
@@ -68,8 +68,8 @@ class ChatList(APIView):
             return Response(serialized_chat.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ChatDetail(APIView):
-    def get(self, request, topic_id, chat_id):
-        valid, msg = check_id_exists(topic_id=topic_id, chat_id=chat_id)
+    def get(self, request, chat_id):
+        valid, msg = check_id_exists(chat_id=chat_id)
         if not valid:
             return Response(msg, status=status.HTTP_404_NOT_FOUND)
         
@@ -78,8 +78,8 @@ class ChatDetail(APIView):
         return Response(serialized_chat.data, status=status.HTTP_200_OK)
 
 
-    def put(self, request, topic_id, chat_id):
-        valid, msg = check_id_exists(topic_id=topic_id, chat_id=chat_id)
+    def put(self, request, chat_id):
+        valid, msg = check_id_exists(chat_id=chat_id)
         if not valid:
             return Response(msg, status=status.HTTP_404_NOT_FOUND)
 
@@ -92,8 +92,8 @@ class ChatDetail(APIView):
         updated_chat = ChatSerializer(chat_instance).data
         return Response(updated_chat, status=status.HTTP_200_OK)
     
-    def delete(self, request, topic_id, chat_id):
-        valid, msg = check_id_exists(topic_id=topic_id, chat_id=chat_id)
+    def delete(self, request, chat_id):
+        valid, msg = check_id_exists(chat_id=chat_id)
         if not valid:
             return Response(msg, status=status.HTTP_404_NOT_FOUND)
         
@@ -106,13 +106,43 @@ class MessageList(APIView):
         pass
 
 class MessageDetail(APIView):
-    def get(self, request, topic_id, chat_id, message_id):
+    def get(self, request, message_id):
         pass
 
 class ExampleList(APIView):
     def get(self, request, topic_id):
-        pass
+        examples = Example.objects.filter(topic_id=topic_id)
+        serialized_examples = ExampleSerializer(examples, many=True)
+        return Response(serialized_examples.data, status=status.HTTP_200_OK)
+
+    def post(self, request, topic_id):
+        example_data = dict(request.data)
+        example_data['topic_id'] = topic_id
+        serialized_example = ExampleSerializer(data=example_data)
+
+        if serialized_example.is_valid():
+            created_example = Example.objects.create(**serialized_example.validated_data)
+            serialized_example = ExampleSerializer(created_example)
+            return Response(serialized_example.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serialized_example.errors, status=status.HTTP_400_BAD_REQUEST)        
 
 class ExampleDetail(APIView):
-    def get(self, request, topic_id, example_id):
-        pass
+    def get(self, request, example_id):
+        example = Example.objects.get(pk=example_id)
+        serialized_example = ExampleSerializer(example)
+        return Response(serialized_example.data, status=status.HTTP_200_OK)
+    
+    def put(self, request, example_id):
+        example_instance = Example.objects.get(pk=example_id)
+        update_record(
+            record_instance=example_instance,
+            update_data=request.data
+            )
+        
+        updated_example = ExampleSerializer(example_instance).data
+        return Response(updated_example, status=status.HTTP_200_OK)
+    
+    def delete(self, request, example_id):
+        deleted_example = Example.objects.get(pk=example_id).delete()
+        return Response(deleted_example, status=status.HTTP_200_OK)
