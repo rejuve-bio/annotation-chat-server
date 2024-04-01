@@ -1,4 +1,4 @@
-# Flask
 # git+https://github.com/iCog-Labs-Dev/biochatter-metta.git@release
 # git+https://github.com/TollanBerhanu/biochatter-metta.git
 Django==5.0.3
+djangorestframework==3.15.1
