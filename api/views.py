@@ -79,7 +79,16 @@ class ChatDetail(APIView):
             )
         
         updated_chat = ChatSerializer(chat_instance).data
-        return Response(updated_chat, status=status.HTTP_201_CREATED)
+        return Response(updated_chat, status=status.HTTP_200_OK)
+    
+    def delete(self, request, topic_id, chat_id):
+        valid, msg = check_id_exists(topic_id=topic_id, chat_id=chat_id)
+        if not valid:
+            return Response(msg, status=status.HTTP_404_NOT_FOUND)
+        
+        deleted_chat = Chat.objects.get(pk=chat_id).delete()
+        return Response(deleted_chat, status=status.HTTP_200_OK)
+
 
 class MessageList(APIView):
     def get(self, request, topic_id, chat_id):
