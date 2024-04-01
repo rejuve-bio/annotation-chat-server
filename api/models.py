@@ -10,7 +10,7 @@ class Topic(models.Model):
 class Chat(models.Model):
     topic_id = models.ForeignKey(Topic, on_delete=models.CASCADE)
     chat_name = models.CharField(max_length=100)
-    chat_created_on = models.DateField(auto_now_add=True)
+    chat_created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
         return self.chat_name
@@ -18,7 +18,7 @@ class Chat(models.Model):
 class Message(models.Model):
     chat_id = models.ForeignKey(Chat, on_delete=models.CASCADE)
     message_text = models.CharField(max_length=2000)
-    message_time = models.DateField(auto_now_add=True)
+    message_time = models.DateTimeField(auto_now_add=True)
     is_user_message = models.BooleanField(default=True)
 
     def __str__(self) -> str:
@@ -31,3 +31,6 @@ class Example(models.Model):
     
     def __str__(self) -> str:
         return self.example_title
+
+class Setting(models.Model):
+    message_context_length = models.IntegerField(default=10)
