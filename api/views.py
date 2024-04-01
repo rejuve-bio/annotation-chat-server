@@ -22,6 +22,17 @@ class TopicDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TopicSerializer
     queryset = Topic.objects.all()
 
+class ChatListAll(generics.ListAPIView):
+    pagination_class = PageNumberPagination
+    serializer_class = ChatSerializer
+    queryset = Chat.objects.all()
+
+    def list(self, request):
+        paginator = self.pagination_class()
+        result_page = paginator.paginate_queryset(self.queryset, request)
+        serialized_chats = self.serializer_class(result_page, many=True)
+        return paginator.get_paginated_response(serialized_chats.data)    
+
 class ChatList(APIView):
     def get(self, request, topic_id):
         valid, msg = check_id_exists(topic_id=topic_id)
