@@ -1,6 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .models import *
 from .serializers import *
@@ -8,7 +9,14 @@ from .utils import *
 
 class TopicList(generics.ListCreateAPIView):
     serializer_class = TopicSerializer
+    pagination_class = PageNumberPagination
     queryset = Topic.objects.all()  
+
+    def list(self, request):
+        paginator = self.pagination_class()
+        result_page = paginator.paginate_queryset(self.queryset, request)
+        serialized_topics = self.serializer_class(result_page, many=True)
+        return paginator.get_paginated_response(serialized_topics.data)
 
 class TopicDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TopicSerializer
@@ -24,8 +32,12 @@ class ChatList(APIView):
         if not chats.exists():
             return Response('No Chats in Topic!', status=status.HTTP_404_NOT_FOUND)
         
-        serialized_chats = ChatSerializer(chats, many=True)
-        return Response(serialized_chats.data, status=status.HTTP_200_OK)
+        paginator = PageNumberPagination()
+        result_page = paginator.paginate_queryset(chats, request)
+        serialized_chats = ChatSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serialized_chats.data)
+        # serialized_chats = ChatSerializer(chats, many=True)
+        # return Response(serialized_chats.data, status=status.HTTP_200_OK)
     
     def post(self, request, topic_id):
         valid, msg = check_id_exists(topic_id=topic_id)
