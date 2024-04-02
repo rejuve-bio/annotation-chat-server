@@ -7,122 +7,105 @@ from .models import *
 from .serializers import *
 from .utils import *
 
+# =========================================================== TOPIC ===========================================================
+
 class TopicList(generics.ListCreateAPIView):
     serializer_class = TopicSerializer
     pagination_class = PageNumberPagination
-    queryset = Topic.objects.all()  
+    queryset = Topic.objects.all()
 
     def list(self, request):
-        paginator = self.pagination_class()
-        result_page = paginator.paginate_queryset(self.get_queryset(), request)
-        serialized_topics = self.serializer_class(result_page, many=True)
-        return paginator.get_paginated_response(serialized_topics.data)
+        return get_paginated_records(
+            pagination_class=self.pagination_class,
+            request=request,
+            record_items=self.queryset,
+            record_serializer_class=self.serializer_class
+        )
 
 class TopicDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TopicSerializer
     queryset = Topic.objects.all()
 
-class ChatListAll(generics.ListAPIView):
-    pagination_class = PageNumberPagination
-    serializer_class = ChatSerializer
-    queryset = Chat.objects.all()
-
-    def list(self, request):
-        paginator = self.pagination_class()
-        result_page = paginator.paginate_queryset(self.get_queryset(), request)
-        serialized_chats = self.serializer_class(result_page, many=True)
-        return paginator.get_paginated_response(serialized_chats.data)    
+# =========================================================== CHAT ===========================================================
 
 class ChatList(APIView):
     def get(self, request, topic_id):
-        valid, msg = check_id_exists(topic_id=topic_id)
-        if not valid:
-            return Response(msg, status=status.HTTP_404_NOT_FOUND)
-        
+        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
+        if not topic_exists:
+            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
+
         chats = Chat.objects.filter(topic_id=topic_id)
-        if not chats.exists():
-            return Response('No Chats in Topic!', status=status.HTTP_404_NOT_FOUND)
-        
-        paginator = PageNumberPagination()
-        result_page = paginator.paginate_queryset(chats, request)
-        serialized_chats = ChatSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serialized_chats.data)
-        # serialized_chats = ChatSerializer(chats, many=True)
-        # return Response(serialized_chats.data, status=status.HTTP_200_OK)
+        return get_paginated_records(
+            pagination_class=PageNumberPagination,
+            request=request,
+            record_items=chats,
+            record_serializer_class=ChatSerializer
+        )
     
     def post(self, request, topic_id):
-        valid, msg = check_id_exists(topic_id=topic_id)
-        if not valid:
-            return Response(msg, status=status.HTTP_404_NOT_FOUND)
-        
-        # Append topic_id to chat data
-        chat_data = dict(request.data)
-        chat_data['topic_id'] = topic_id
-        serialized_chat = ChatSerializer(data=chat_data)
+        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
+        if not topic_exists:
+            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
 
-        if serialized_chat.is_valid():
-            created_chat = Chat.objects.create(**serialized_chat.validated_data)
-            serialized_chat = ChatSerializer(created_chat)
-            return Response(serialized_chat.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serialized_chat.errors, status=status.HTTP_400_BAD_REQUEST)
+        return add_record(
+            record_data = dict(request.data),
+            record_model = Chat,
+            record_serializer= ChatSerializer,
+            foreign_key={'topic_id': topic_id}
+        )
 
-class ChatDetail(APIView):
-    def get(self, request, chat_id):
-        valid, msg = check_id_exists(chat_id=chat_id)
-        if not valid:
-            return Response(msg, status=status.HTTP_404_NOT_FOUND)
-        
-        chat = Chat.objects.get(pk=chat_id)
-        serialized_chat = ChatSerializer(chat)
-        return Response(serialized_chat.data, status=status.HTTP_200_OK)
+class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ChatSerializer
+    queryset = Chat.objects.all()
 
+    def update(self, request, pk):
+        chat_instance = Chat.objects.get(pk=pk)
+        return update_record(
+            record_instance = chat_instance,
+            update_data = request.data
+        )
 
-    def put(self, request, chat_id):
-        valid, msg = check_id_exists(chat_id=chat_id)
-        if not valid:
-            return Response(msg, status=status.HTTP_404_NOT_FOUND)
+class ChatListAll(APIView):
+    def get(self, request):
+        all_chats = Chat.objects.all()
 
-        chat_instance = Chat.objects.get(pk=chat_id)
-        update_record(
-            record_instance=chat_instance,
-            update_data=request.data
-            )
-        
-        updated_chat = ChatSerializer(chat_instance).data
-        return Response(updated_chat, status=status.HTTP_200_OK)
-    
-    def delete(self, request, chat_id):
-        valid, msg = check_id_exists(chat_id=chat_id)
-        if not valid:
-            return Response(msg, status=status.HTTP_404_NOT_FOUND)
-        
-        deleted_chat = Chat.objects.get(pk=chat_id).delete()
-        return Response(deleted_chat, status=status.HTTP_200_OK)
+        # /api/chats/?limit=_&offset=_ (Limit = No. of chats, Offset = start from)
+        return get_paginated_records(
+            pagination_class=LimitOffsetPagination,
+            request=request,
+            record_items=all_chats,
+            record_serializer_class=ChatSerializer
+        )
 
+# =========================================================== MESSAGE ===========================================================
 
 class MessageList(APIView):
     def get(self, request, chat_id):
+        chat_exists = record_exists(record_model=Chat, record_id=chat_id)
+        if not chat_exists:
+            return Response('Invalid Chat ID!' ,status=status.HTTP_400_BAD_REQUEST)
+        
         messages = Message.objects.filter(chat_id=chat_id).order_by('-message_created_at')
 
         # /api/chats/<chat_id>/messages/?limit=2&offset=2 (Limit = no. of messages, Offset = start from)
-        paginator = LimitOffsetPagination()
-        result_page = paginator.paginate_queryset(messages, request)
-
-        serialized_messages = MessageSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serialized_messages.data)
+        return get_paginated_records(
+            pagination_class=LimitOffsetPagination,
+            request=request,
+            record_items=messages,
+            record_serializer_class=MessageSerializer
+        )
     
     def post(self, request, chat_id):
-        message_data = dict(request.data)
-        message_data['chat_id'] = chat_id
-        serialized_message = MessageSerializer(data=message_data)
-
-        if serialized_message.is_valid():
-            created_message = Message.objects.create(**serialized_message.validated_data)
-            serialized_message = MessageSerializer(created_message)
-            return Response(serialized_message.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serialized_message.errors, status=status.HTTP_400_BAD_REQUEST)  
+        chat_exists = record_exists(record_model=Chat, record_id=chat_id)
+        if not chat_exists:
+            return Response('Invalid Chat ID!' ,status=status.HTTP_400_BAD_REQUEST)
+        
+        return add_record(
+            record_data = dict(request.data),
+            record_model = Message,
+            record_serializer= MessageSerializer,
+            additional_fields={'chat_id': chat_id}
+        )
 
 class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = MessageSerializer
@@ -130,44 +113,48 @@ class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, pk):
         message_instance = Message.objects.get(pk=pk)
-        update_record(record_instance=message_instance, update_data=request.data)
+        return update_record(
+            record_instance = message_instance,
+            update_data = request.data
+        )
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+# =========================================================== EXAMPLE ===========================================================
 
 class ExampleList(APIView):
     def get(self, request, topic_id):
+        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
+        if not topic_exists:
+            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
+
         examples = Example.objects.filter(topic_id=topic_id)
-        serialized_examples = ExampleSerializer(examples, many=True)
-        return Response(serialized_examples.data, status=status.HTTP_200_OK)
+
+        return get_paginated_records(
+            pagination_class=PageNumberPagination,
+            request=request,
+            record_items=examples,
+            record_serializer_class=ExampleSerializer
+        )
 
     def post(self, request, topic_id):
-        example_data = dict(request.data)
-        example_data['topic_id'] = topic_id
-        serialized_example = ExampleSerializer(data=example_data)
+        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
+        if not topic_exists:
+            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
 
-        if serialized_example.is_valid():
-            created_example = Example.objects.create(**serialized_example.validated_data)
-            serialized_example = ExampleSerializer(created_example)
-            return Response(serialized_example.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serialized_example.errors, status=status.HTTP_400_BAD_REQUEST)        
+        return add_record(
+            record_data = dict(request.data),
+            record_model = Example,
+            record_serializer= ExampleSerializer,
+            additional_fields={'topic_id': topic_id}
+        )       
 
-class ExampleDetail(APIView):
-    def get(self, request, example_id):
-        example = Example.objects.get(pk=example_id)
-        serialized_example = ExampleSerializer(example)
-        return Response(serialized_example.data, status=status.HTTP_200_OK)
-    
-    def put(self, request, example_id):
-        example_instance = Example.objects.get(pk=example_id)
-        update_record(
-            record_instance=example_instance,
-            update_data=request.data
-            )
+class ExampleDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ExampleSerializer
+    queryset = Example.objects.all()
+
+    def update(self, request, pk):
+        example_instance = Example.objects.get(pk=pk)
         
-        updated_example = ExampleSerializer(example_instance).data
-        return Response(updated_example, status=status.HTTP_200_OK)
-    
-    def delete(self, request, example_id):
-        deleted_example = Example.objects.get(pk=example_id).delete()
-        return Response(deleted_example, status=status.HTTP_200_OK)
+        return update_record(
+            record_instance = example_instance,
+            update_data = request.data
+        )
