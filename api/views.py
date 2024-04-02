@@ -1,7 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 
 from .models import *
 from .serializers import *
@@ -102,12 +102,37 @@ class ChatDetail(APIView):
 
 
 class MessageList(APIView):
-    def get(self, request, topic_id, chat_id):
-        pass
+    def get(self, request, chat_id):
+        messages = Message.objects.filter(chat_id=chat_id).order_by('-message_created_at')
 
-class MessageDetail(APIView):
-    def get(self, request, message_id):
-        pass
+        # /api/chats/<chat_id>/messages/?limit=2&offset=2 (Limit = no. of messages, Offset = start from)
+        paginator = LimitOffsetPagination()
+        result_page = paginator.paginate_queryset(messages, request)
+
+        serialized_messages = MessageSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serialized_messages.data)
+    
+    def post(self, request, chat_id):
+        message_data = dict(request.data)
+        message_data['chat_id'] = chat_id
+        serialized_message = MessageSerializer(data=message_data)
+
+        if serialized_message.is_valid():
+            created_message = Message.objects.create(**serialized_message.validated_data)
+            serialized_message = MessageSerializer(created_message)
+            return Response(serialized_message.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serialized_message.errors, status=status.HTTP_400_BAD_REQUEST)  
+
+class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = MessageSerializer
+    queryset = Message.objects.all()
+
+    def update(self, request, pk):
+        message_instance = Message.objects.get(pk=pk)
+        update_record(record_instance=message_instance, update_data=request.data)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ExampleList(APIView):
     def get(self, request, topic_id):
