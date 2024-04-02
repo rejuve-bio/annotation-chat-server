@@ -10,7 +10,8 @@ class Topic(models.Model):
 class Chat(models.Model):
     topic_id = models.ForeignKey(Topic, on_delete=models.CASCADE)
     chat_name = models.CharField(max_length=100)
-    chat_created_on = models.DateTimeField(auto_now_add=True)
+    chat_created_at = models.DateTimeField(auto_now_add=True)
+    chat_updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
         return self.chat_name
@@ -18,8 +19,9 @@ class Chat(models.Model):
 class Message(models.Model):
     chat_id = models.ForeignKey(Chat, on_delete=models.CASCADE)
     message_text = models.CharField(max_length=2000)
-    message_time = models.DateTimeField(auto_now_add=True)
     is_user_message = models.BooleanField(default=True)
+    message_created_at = models.DateTimeField(auto_now_add=True)
+    message_updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
         return 'User Message' if self.is_user_message else 'LLM Message'
