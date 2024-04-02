@@ -1,7 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
+from rest_framework.pagination import LimitOffsetPagination
 
 from .models import *
 from .serializers import *
@@ -11,7 +11,7 @@ from .utils import *
 
 class TopicList(generics.ListCreateAPIView):
     serializer_class = TopicSerializer
-    pagination_class = PageNumberPagination
+    pagination_class = LimitOffsetPagination
     queryset = Topic.objects.all()
 
     def list(self, request):
@@ -36,7 +36,7 @@ class ChatList(APIView):
 
         chats = Chat.objects.filter(topic_id=topic_id)
         return get_paginated_records(
-            pagination_class=PageNumberPagination,
+            pagination_class=LimitOffsetPagination,
             request=request,
             record_items=chats,
             record_serializer_class=ChatSerializer
@@ -129,7 +129,7 @@ class ExampleList(APIView):
         examples = Example.objects.filter(topic_id=topic_id)
 
         return get_paginated_records(
-            pagination_class=PageNumberPagination,
+            pagination_class=LimitOffsetPagination,
             request=request,
             record_items=examples,
             record_serializer_class=ExampleSerializer
