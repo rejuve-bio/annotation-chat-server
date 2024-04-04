@@ -15,10 +15,10 @@ def update_record(record_instance, update_data):
     else:
         return Response('Record does not exist!' ,status=status.HTTP_404_NOT_FOUND)
 
-def add_record(record_data, record_model, record_serializer, foreign_key=None):
-    if foreign_key is not None:
-        record_data.update(foreign_key)
-        # for key, value in foreign_key:
+def add_record(record_data, record_model, record_serializer, additional_fields=None, get_serialized_record=False):
+    if additional_fields is not None:
+        record_data.update(additional_fields)
+        # for key, value in additional_fields:
         #     if record_exists(record_model=record_model, record_id=)
     
     serialized_record = record_serializer(data=record_data)
@@ -26,6 +26,11 @@ def add_record(record_data, record_model, record_serializer, foreign_key=None):
     if serialized_record.is_valid():
         created_record = record_model.objects.create(**serialized_record.validated_data)
         serialized_record = record_serializer(created_record)
+
+        #Incase we only want the serialized data
+        if get_serialized_record:
+            return serialized_record.data
+        
         return Response(serialized_record.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serialized_record.errors, status=status.HTTP_400_BAD_REQUEST)
