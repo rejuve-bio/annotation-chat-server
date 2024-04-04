@@ -2,7 +2,7 @@ from django.db import models
 
 class Topic(models.Model):
     topic_name = models.CharField(max_length=100)
-    topic_file = models.FileField(upload_to="bio_atomspace", null=True)
+    topic_file = models.FileField(upload_to="bio_data/bioatomspace", null=True)
 
     def __str__(self) -> str:
         return self.topic_name

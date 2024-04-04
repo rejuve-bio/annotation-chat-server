@@ -1,6 +1,5 @@
 from rest_framework.response import Response
 from rest_framework import status
-from .models import *
 
 # Check if the id exists in the database
 def record_exists(record_model, record_id):
