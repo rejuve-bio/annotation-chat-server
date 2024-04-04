@@ -100,12 +100,20 @@ class MessageList(APIView):
         if not chat_exists:
             return Response('Invalid Chat ID!' ,status=status.HTTP_400_BAD_REQUEST)
         
+        # TODO
+        # get user message_text
+        # get last n interactions / 20 messages
+        # pass both to biochatter, receive llm response
+        # add Message record with is_user_message=False
+
         return add_record(
             record_data = dict(request.data),
             record_model = Message,
             record_serializer= MessageSerializer,
             additional_fields={'chat_id': chat_id}
         )
+
+        # TODO: check both responses and return a single response
 
 class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = MessageSerializer
