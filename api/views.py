@@ -112,7 +112,7 @@ class MessageList(APIView):
             smn = 'User' if message['is_user_message'] else 'Assistant'
             llm_context += f"{smn}: {message['message_text']}\n"
         llm_context += '\n###\n\n'
-        print(llm_context)
+        # print(llm_context)
 
         # TODO
         # get user message_text
@@ -128,26 +128,37 @@ class MessageList(APIView):
         # user_question = 'What is gene ENSG00000237491 transcribed to?'
 
         user_message = request.data['message_text']
-        resp = prompt_engine.get_metta_response(user_message)
-        print(resp)
+        metta_response = prompt_engine.get_metta_response(
+            user_question=user_message,
+            get_llm_response=True,
+            llm_context=llm_context
+            )
+        # print(metta_response)
+        llm_message = {
+            'message_text': metta_response['llm_response']
+        }
 
-
-        add_record(
-            record_data = dict(request.data),
+        llm_record = add_record(
+            record_data = llm_message,
             record_model = Message,
             record_serializer= MessageSerializer,
-            additional_fields={'chat_id': chat_id}
+            additional_fields={'chat_id': chat_id, 'is_user_message': False},
+            get_serialized_record=True
         )
 
-        add_record(
+        user_record = add_record(
             record_data = dict(request.data),
             record_model = Message,
             record_serializer= MessageSerializer,
-            additional_fields={'chat_id': chat_id}
+            additional_fields={'chat_id': chat_id},
+            get_serialized_record=True
         )
 
         # TODO: check both responses and return a single response
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'user_question': user_record,
+            'llm_response': llm_record
+        }, status=status.HTTP_201_CREATED)
 
 class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = MessageSerializer
