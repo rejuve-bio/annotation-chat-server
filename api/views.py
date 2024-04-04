@@ -7,6 +7,7 @@ from .models import *
 from .serializers import *
 from .utils import *
 
+from biochatter_metta.prompts import BioCypherPromptEngine
 # =========================================================== TOPIC ===========================================================
 
 class TopicList(generics.ListCreateAPIView):
@@ -99,14 +100,46 @@ class MessageList(APIView):
         chat_exists = record_exists(record_model=Chat, record_id=chat_id)
         if not chat_exists:
             return Response('Invalid Chat ID!' ,status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Get context length from query parameter
+        context_length = self.request.query_params.get('context_length', 2)
+        message_history = MessageSerializer( Message.objects.filter(chat_id=chat_id).order_by('-message_created_at')[:context_length], many=True ).data
+        # Get the list in ascending chronological order
+        message_history.reverse()
+        # Format in chat style message
+        llm_context = 'Use this interaction history between the "User" and the "Assistant" as additional context.\n\n ###\n'
+        for message in message_history:
+            smn = 'User' if message['is_user_message'] else 'Assistant'
+            llm_context += f"{smn}: {message['message_text']}\n"
+        llm_context += '\n###\n\n'
+        print(llm_context)
+
         # TODO
         # get user message_text
         # get last n interactions / 20 messages
         # pass both to biochatter, receive llm response
         # add Message record with is_user_message=False
+        prompt_engine = BioCypherPromptEngine(
+                model_name='gpt-3.5-turbo',
+                schema_config_or_info_path='./api/bio_data/biocypher_config/schema_config.yaml',
+                schema_mappings='./api/bio_data/biocypher_config/schema_mappings.json',
+                openai_api_key='*****'
+            )
+        # user_question = 'What is gene ENSG00000237491 transcribed to?'
 
-        return add_record(
+        user_message = request.data['message_text']
+        resp = prompt_engine.get_metta_response(user_message)
+        print(resp)
+
+
+        add_record(
+            record_data = dict(request.data),
+            record_model = Message,
+            record_serializer= MessageSerializer,
+            additional_fields={'chat_id': chat_id}
+        )
+
+        add_record(
             record_data = dict(request.data),
             record_model = Message,
             record_serializer= MessageSerializer,
@@ -114,6 +147,7 @@ class MessageList(APIView):
         )
 
         # TODO: check both responses and return a single response
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = MessageSerializer
