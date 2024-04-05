@@ -52,7 +52,7 @@ class ChatList(APIView):
             record_data = dict(request.data),
             record_model = Chat,
             record_serializer= ChatSerializer,
-            foreign_key={'topic_id': topic_id}
+            additional_fields={'topic_id': topic_id}
         )
 
 class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -102,7 +102,7 @@ class MessageList(APIView):
             return Response('Invalid Chat ID!' ,status=status.HTTP_400_BAD_REQUEST)
 
         # Get context length from query parameter
-        context_length = self.request.query_params.get('context_length', 2)
+        context_length = self.request.query_params.get('context_length', 20)
         message_history = MessageSerializer( Message.objects.filter(chat_id=chat_id).order_by('-message_created_at')[:context_length], many=True ).data
         # Get the list in ascending chronological order
         message_history.reverse()
