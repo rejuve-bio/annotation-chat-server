@@ -7,6 +7,7 @@ from .models import *
 from .serializers import *
 from .utils import *
 
+from datetime import datetime
 from biochatter_metta.prompts import BioCypherPromptEngine
 # =========================================================== TOPIC ===========================================================
 
@@ -61,6 +62,7 @@ class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, pk):
         chat_instance = Chat.objects.get(pk=pk)
+        request.data.update({'chat_updated_at': datetime.now()})
         return update_record(
             record_instance = chat_instance,
             update_data = request.data
@@ -128,29 +130,35 @@ class MessageList(APIView):
         # user_question = 'What is gene ENSG00000237491 transcribed to?'
 
         user_message = request.data['message_text']
-        metta_response = prompt_engine.get_metta_response(
-            user_question=user_message,
-            get_llm_response=True,
-            llm_context=llm_context
-            )
-        # print(metta_response)
+        try:
+            metta_response = prompt_engine.get_metta_response(
+                user_question=user_message,
+                get_llm_response=True,
+                llm_context=llm_context
+                )
+            # print(metta_response)
+            if not metta_response['llm_response']:
+                raise Exception('Unable to get LLM response!')
+        except Exception as e:
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         llm_message = {
             'message_text': metta_response['llm_response']
         }
-
-        llm_record = add_record(
-            record_data = llm_message,
-            record_model = Message,
-            record_serializer= MessageSerializer,
-            additional_fields={'chat_id': chat_id, 'is_user_message': False},
-            get_serialized_record=True
-        )
 
         user_record = add_record(
             record_data = dict(request.data),
             record_model = Message,
             record_serializer= MessageSerializer,
             additional_fields={'chat_id': chat_id},
+            get_serialized_record=True
+        )
+
+        llm_record = add_record(
+            record_data = llm_message,
+            record_model = Message,
+            record_serializer= MessageSerializer,
+            additional_fields={'chat_id': chat_id, 'is_user_message': False},
             get_serialized_record=True
         )
 
@@ -166,6 +174,7 @@ class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, pk):
         message_instance = Message.objects.get(pk=pk)
+        request.data.update({'message_updated_at': datetime.now()})
         return update_record(
             record_instance = message_instance,
             update_data = request.data
