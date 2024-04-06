@@ -7,6 +7,7 @@ from .models import *
 from .serializers import *
 from .utils import *
 
+from datetime import datetime
 from biochatter_metta.prompts import BioCypherPromptEngine
 # =========================================================== TOPIC ===========================================================
 
@@ -61,6 +62,7 @@ class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, pk):
         chat_instance = Chat.objects.get(pk=pk)
+        request.data.update({'chat_updated_at': datetime.now()})
         return update_record(
             record_instance = chat_instance,
             update_data = request.data
@@ -138,19 +140,19 @@ class MessageList(APIView):
             'message_text': metta_response['llm_response']
         }
 
-        llm_record = add_record(
-            record_data = llm_message,
-            record_model = Message,
-            record_serializer= MessageSerializer,
-            additional_fields={'chat_id': chat_id, 'is_user_message': False},
-            get_serialized_record=True
-        )
-
         user_record = add_record(
             record_data = dict(request.data),
             record_model = Message,
             record_serializer= MessageSerializer,
             additional_fields={'chat_id': chat_id},
+            get_serialized_record=True
+        )
+
+        llm_record = add_record(
+            record_data = llm_message,
+            record_model = Message,
+            record_serializer= MessageSerializer,
+            additional_fields={'chat_id': chat_id, 'is_user_message': False},
             get_serialized_record=True
         )
 
@@ -166,6 +168,7 @@ class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, pk):
         message_instance = Message.objects.get(pk=pk)
+        request.data.update({'message_updated_at': datetime.now()})
         return update_record(
             record_instance = message_instance,
             update_data = request.data
