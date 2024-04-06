@@ -130,12 +130,18 @@ class MessageList(APIView):
         # user_question = 'What is gene ENSG00000237491 transcribed to?'
 
         user_message = request.data['message_text']
-        metta_response = prompt_engine.get_metta_response(
-            user_question=user_message,
-            get_llm_response=True,
-            llm_context=llm_context
-            )
-        # print(metta_response)
+        try:
+            metta_response = prompt_engine.get_metta_response(
+                user_question=user_message,
+                get_llm_response=True,
+                llm_context=llm_context
+                )
+            # print(metta_response)
+            if not metta_response['llm_response']:
+                raise Exception('Unable to get LLM response!')
+        except Exception as e:
+            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         llm_message = {
             'message_text': metta_response['llm_response']
         }
