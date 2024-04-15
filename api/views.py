@@ -7,29 +7,8 @@ from .models import *
 from .serializers import *
 from .utils import *
 
-import os
 from datetime import datetime
-from biochatter_metta.prompts import BioCypherPromptEngine, get_llm_response
-# from biochatter_metta.llm_connect import Conversation, GptConversation
-# =========================================================== TOPIC ===========================================================
-
-# class TopicList(generics.ListCreateAPIView):
-#     serializer_class = TopicSerializer
-#     pagination_class = LimitOffsetPagination
-#     queryset = Topic.objects.all()
-
-#     def list(self, request):
-#         return get_paginated_records(
-#             pagination_class=self.pagination_class,
-#             request=request,
-#             record_items=self.queryset,
-#             record_serializer_class=self.serializer_class
-#         )
-
-# class TopicDetail(generics.RetrieveUpdateDestroyAPIView):
-#     serializer_class = TopicSerializer
-#     queryset = Topic.objects.all()
-
+from biochatter_metta.prompts import get_llm_response
 # =========================================================== CHAT ===========================================================
 
 class ChatList(APIView):
@@ -182,3 +161,32 @@ class ExampleDetail(generics.RetrieveUpdateDestroyAPIView):
             record_instance = example_instance,
             update_data = request.data
         )
+
+# =========================================================== SCHEMA ===========================================================
+
+class SchemaList(generics.ListCreateAPIView):
+    serializer_class = SchemaSerializer
+    queryset = Schema.objects.all()
+
+# =========================================================== ATOMSPACE ===========================================================
+
+class AtomspaceList(generics.ListCreateAPIView):
+    serializer_class = AtomspaceSerializer
+    queryset = Atomspace.objects.all()
+
+    def get():
+        pass
+        # TODO: get a list of all the nodes & edges in the schema
+            # - get the last schema file uploaded
+            # - call a function from biochatter-metta that takes the .yaml path and lists all the entities
+        # List all the entities' names and types
+        # List any previously recorded file paths for the entitiesv(if any)
+        '''
+        {
+            'type': 'node'
+            'name': 'gene'
+            'path': '/bio_data/bioatomspace/gene/_node_2556.metta
+        }
+        '''
+        
+        
