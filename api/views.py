@@ -7,36 +7,34 @@ from .models import *
 from .serializers import *
 from .utils import *
 
+import os
 from datetime import datetime
-from biochatter_metta.prompts import BioCypherPromptEngine
+from biochatter_metta.prompts import BioCypherPromptEngine, get_llm_response
+# from biochatter_metta.llm_connect import Conversation, GptConversation
 # =========================================================== TOPIC ===========================================================
 
-class TopicList(generics.ListCreateAPIView):
-    serializer_class = TopicSerializer
-    pagination_class = LimitOffsetPagination
-    queryset = Topic.objects.all()
+# class TopicList(generics.ListCreateAPIView):
+#     serializer_class = TopicSerializer
+#     pagination_class = LimitOffsetPagination
+#     queryset = Topic.objects.all()
 
-    def list(self, request):
-        return get_paginated_records(
-            pagination_class=self.pagination_class,
-            request=request,
-            record_items=self.queryset,
-            record_serializer_class=self.serializer_class
-        )
+#     def list(self, request):
+#         return get_paginated_records(
+#             pagination_class=self.pagination_class,
+#             request=request,
+#             record_items=self.queryset,
+#             record_serializer_class=self.serializer_class
+#         )
 
-class TopicDetail(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = TopicSerializer
-    queryset = Topic.objects.all()
+# class TopicDetail(generics.RetrieveUpdateDestroyAPIView):
+#     serializer_class = TopicSerializer
+#     queryset = Topic.objects.all()
 
 # =========================================================== CHAT ===========================================================
 
 class ChatList(APIView):
-    def get(self, request, topic_id):
-        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
-        if not topic_exists:
-            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
-
-        chats = Chat.objects.filter(topic_id=topic_id)
+    def get(self, request):
+        chats = Chat.objects.all()
         return get_paginated_records(
             pagination_class=LimitOffsetPagination,
             request=request,
@@ -44,17 +42,41 @@ class ChatList(APIView):
             record_serializer_class=ChatSerializer
         )
     
-    def post(self, request, topic_id):
-        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
-        if not topic_exists:
-            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request):
+        message_text = request.data.get('message_text', '')
+        if not message_text:
+            return Response('message_text is missing!', status=status.HTTP_400_BAD_REQUEST)
 
-        return add_record(
-            record_data = dict(request.data),
+        llm_response, _, _ = get_llm_response(
+            openai_api_key='*',
+            prompt=f'''\
+            Write a short and descriptive chat title based on the sample message below:
+            "{message_text}"\
+            The title should not me more than fifty characters long.\
+            Return only the title and without any explanations.\
+            '''.strip()
+        )
+
+        chat_record = add_record(
+            record_data = {'chat_name': llm_response},
             record_model = Chat,
             record_serializer= ChatSerializer,
-            additional_fields={'topic_id': topic_id}
+            get_serialized_record=True
         )
+        chat_id = chat_record['id']
+
+        user_record, llm_record = add_message_record(
+            user_data=request.data,
+            chat_id=chat_id,
+            message_model=Message,
+            message_serializer_class=MessageSerializer
+        )
+
+        return Response({
+            'chat_record': chat_record,
+            'user_record': user_record,
+            'llm_record': llm_record
+        }, status=status.HTTP_201_CREATED)
 
 class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ChatSerializer
@@ -66,18 +88,6 @@ class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
         return update_record(
             record_instance = chat_instance,
             update_data = request.data
-        )
-
-class ChatListAll(APIView):
-    def get(self, request):
-        all_chats = Chat.objects.all()
-
-        # /api/chats/?limit=_&offset=_ (Limit = No. of chats, Offset = start from)
-        return get_paginated_records(
-            pagination_class=LimitOffsetPagination,
-            request=request,
-            record_items=all_chats,
-            record_serializer_class=ChatSerializer
         )
 
 # =========================================================== MESSAGE ===========================================================
@@ -114,52 +124,13 @@ class MessageList(APIView):
             smn = 'User' if message['is_user_message'] else 'Assistant'
             llm_context += f"{smn}: {message['message_text']}\n"
         llm_context += '\n###\n\n'
-        # print(llm_context)
 
-        # TODO
-        # get user message_text
-        # get last n interactions / 20 messages
-        # pass both to biochatter, receive llm response
-        # add Message record with is_user_message=False
-        prompt_engine = BioCypherPromptEngine(
-                model_name='gpt-3.5-turbo',
-                schema_config_or_info_path='./api/bio_data/biocypher_config/schema_config.yaml',
-                schema_mappings='./api/bio_data/biocypher_config/schema_mappings.json',
-                openai_api_key='*****'
-            )
-        # user_question = 'What is gene ENSG00000237491 transcribed to?'
-
-        user_message = request.data['message_text']
-        try:
-            metta_response = prompt_engine.get_metta_response(
-                user_question=user_message,
-                get_llm_response=True,
-                llm_context=llm_context
-                )
-            # print(metta_response)
-            if not metta_response['llm_response']:
-                raise Exception('Unable to get LLM response!')
-        except Exception as e:
-            return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        llm_message = {
-            'message_text': metta_response['llm_response']
-        }
-
-        user_record = add_record(
-            record_data = dict(request.data),
-            record_model = Message,
-            record_serializer= MessageSerializer,
-            additional_fields={'chat_id': chat_id},
-            get_serialized_record=True
-        )
-
-        llm_record = add_record(
-            record_data = llm_message,
-            record_model = Message,
-            record_serializer= MessageSerializer,
-            additional_fields={'chat_id': chat_id, 'is_user_message': False},
-            get_serialized_record=True
+        user_record, llm_record = add_message_record(
+            user_data=request.data,
+            chat_id=chat_id,
+            message_model=Message,
+            message_serializer_class=MessageSerializer,
+            llm_context=llm_context
         )
 
         # TODO: check both responses and return a single response
@@ -183,12 +154,8 @@ class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 # =========================================================== EXAMPLE ===========================================================
 
 class ExampleList(APIView):
-    def get(self, request, topic_id):
-        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
-        if not topic_exists:
-            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
-
-        examples = Example.objects.filter(topic_id=topic_id)
+    def get(self, request):
+        examples = Example.objects.all()
 
         return get_paginated_records(
             pagination_class=LimitOffsetPagination,
@@ -197,16 +164,11 @@ class ExampleList(APIView):
             record_serializer_class=ExampleSerializer
         )
 
-    def post(self, request, topic_id):
-        topic_exists = record_exists(record_model=Topic, record_id=topic_id)
-        if not topic_exists:
-            return Response('Invalid Topic ID!' ,status=status.HTTP_400_BAD_REQUEST)
-
+    def post(self, request):
         return add_record(
             record_data = dict(request.data),
             record_model = Example,
-            record_serializer= ExampleSerializer,
-            additional_fields={'topic_id': topic_id}
+            record_serializer= ExampleSerializer
         )       
 
 class ExampleDetail(generics.RetrieveUpdateDestroyAPIView):
