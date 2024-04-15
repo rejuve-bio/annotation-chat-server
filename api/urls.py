@@ -3,21 +3,20 @@ from .views import *
 
 urlpatterns = [
 # ---------------------------------- TOPICS ----------------------------------
-    path('topics/', TopicList.as_view()),
+    # path('topics/', TopicList.as_view()),
     # GET - List all topics
     # POST - Create a topic  | required fields= topic_name(str), topic_file(file)
                             # | Send request as Multipart formdata
-    path('topics/<int:pk>/', TopicDetail.as_view()),
+    # path('topics/<int:pk>/', TopicDetail.as_view()),
     # GET - Fetch a topic by ID
     # PUT - Update the topic    | only pass the updated fields
     # DELETE - Delete the topic
 
 # ---------------------------------- CHATS ----------------------------------
-    path('chats/', ChatListAll.as_view()),
+    # path('chats/', ChatListAll.as_view()),
+    path('chats/', ChatList.as_view()),
     # GET - List all chats
-    path('topics/<int:topic_id>/chats/', ChatList.as_view()),
-    # GET - List all chats under a topic
-    # POST - Create a chat for that topic  | required field = chat_name(str)
+    # POST - Create a chat  | required field = chat_name(str)
     path('chats/<int:pk>/', ChatDetail.as_view()),
     # GET - Fetch a chat by ID
     # PUT - Update the chat    | only pass the updated fields
@@ -35,9 +34,9 @@ urlpatterns = [
     # DELETE - Delete the message
 
 # ---------------------------------- EXAMPLES ----------------------------------
-    path('topics/<int:topic_id>/examples/', ExampleList.as_view()),
-    # GET - List all examples under a topic
-    # POST - Create an example for that topic  | required fields = example_title(str), example_question(str)
+    path('examples/', ExampleList.as_view()),
+    # GET - List all examples
+    # POST - Create an example  | required fields = example_text(str)
     path('examples/<int:pk>/', ExampleDetail.as_view())
     # GET - Fetch an example by ID
     # PUT - Update the example    | only pass the updated fields
