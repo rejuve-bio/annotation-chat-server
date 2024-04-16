@@ -56,20 +56,21 @@ def add_message_record(user_data, chat_id, message_model, message_serializer_cla
         )
 
     user_message = user_data['message_text']
-    try:
-        metta_response = prompt_engine.get_metta_response(
-            user_question=user_message,
-            with_llm_response=True,
-            llm_context=llm_context
-            )
+    # try:
+        # metta_response = prompt_engine.get_metta_response(
+        #     user_question=user_message,
+        #     with_llm_response=True,
+        #     llm_context=llm_context
+        #     )
 
-        if not metta_response['llm_response']:
-            raise Exception('Unable to get LLM response!')
-    except Exception as e:
-        return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # if not metta_response['llm_response']:
+        #     raise Exception('Unable to get LLM response!')
+    # except Exception as e:
+    #     return Response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     llm_message = {
-        'message_text': metta_response['llm_response']
+        # 'message_text': metta_response['llm_response']
+        'message_text':'### User: template question ### Assistant: ```markdown The result for the question "template question" is as follows: - The first set of brackets contains an empty list: [] - The second set of brackets also contains an empty list: [] - The third set of brackets is empty: [] This means that the result for the question "template question" is an empty list within three sets of brackets: [[()], [()], []]. ```'
     }
 
     user_record = add_record(

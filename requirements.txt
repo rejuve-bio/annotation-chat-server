@@ -1,5 +1,5 @@
 # BioChatter MeTTa Package
-git+https://github.com/iCog-Labs-Dev/biochatter-metta.git@release
+git+https://github.com/iCog-Labs-Dev/biochatter-metta.git@feat/parse_yaml
 
 # API Dependencies
 Django==5.0.4

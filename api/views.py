@@ -47,16 +47,18 @@ class ChatList(APIView):
         if not message_text:
             return Response('message_text is missing!', status=status.HTTP_400_BAD_REQUEST)
 
-        llm_response, _, _ = get_llm_response(
-            openai_api_key='*',
-            prompt=f'''\
-            Write a short and descriptive chat title based on the sample message below:
-            "{message_text}"\
-            The title should not me more than fifty characters long.\
-            Return only the title and without any explanations.\
-            '''.strip()
-        )
+        # llm_response, _, _ = get_llm_response(
+        #     openai_api_key='*',
+        #     prompt=f'''\
+        #     Write a short and descriptive chat title based on the sample message below:
+        #     "{message_text}"\
+        #     The title should not me more than fifty characters long.\
+        #     Return only the title and without any explanations.\
+        #     '''.strip()
+        # )
 
+        # llm_response='### User: template question ### Assistant: ```markdown The result for the question "template question" is as follows: - The first set of brackets contains an empty list: [] - The second set of brackets also contains an empty list: [] - The third set of brackets is empty: [] This means that the result for the question "template question" is an empty list within three sets of brackets: [[()], [()], []]. ```'
+        llm_response = message_text
         chat_record = add_record(
             record_data = {'chat_name': llm_response},
             record_model = Chat,
@@ -65,17 +67,17 @@ class ChatList(APIView):
         )
         chat_id = chat_record['id']
 
-        user_record, llm_record = add_message_record(
-            user_data=request.data,
-            chat_id=chat_id,
-            message_model=Message,
-            message_serializer_class=MessageSerializer
-        )
+        # user_record, llm_record = add_message_record(
+        #     user_data=request.data,
+        #     chat_id=chat_id,
+        #     message_model=Message,
+        #     message_serializer_class=MessageSerializer
+        # )
 
         return Response({
             'chat_record': chat_record,
-            'user_record': user_record,
-            'llm_record': llm_record
+            # 'user_record': user_record,
+            # 'llm_record': llm_record
         }, status=status.HTTP_201_CREATED)
 
 class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
