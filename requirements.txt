@@ -4,10 +4,10 @@ git+https://github.com/iCog-Labs-Dev/biochatter-metta.git@release
 # API Dependencies
 Django==5.0.4
 djangorestframework==3.15.1
-django-cors-headers==4.3.1
+django-cors-headers==4.9.0
 
 # BioChatter Dependencies
-django-cors-headers==4.3.1
+django-cors-headers==4.9.0
 hyperon==0.1.6
 langchain==0.0.347
 openai==1.1.0
